@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Car finder</title>
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#14201c;--mute:#5d6b66;--line:#d5dcd9;--accent:#0b6b57}
+@media (prefers-color-scheme:dark){:root{--bg:#101614;--card:#18211e;--ink:#e8efec;--mute:#93a39d;--line:#2a3733;--accent:#4cc3a6}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.6rem;margin:0 0 16px}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;background:var(--card);border:1px solid var(--line);padding:16px;border-radius:10px}
+label{display:flex;flex-direction:column;font-size:.85rem;color:var(--mute);gap:4px}
+input,select{padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button{grid-column:1/-1;padding:10px;border:0;border-radius:6px;background:var(--accent);color:var(--bg);font:inherit;font-weight:600;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#status{margin:16px 0;color:var(--mute)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+a.car{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;color:inherit;text-decoration:none}
+a.car img{width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--line);display:block}
+.b{padding:10px 12px}.p{font-weight:700;color:var(--accent)}.m{font-size:.85rem;color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+<h1>Find cars by spec</h1>
+<form id="f">
+<label>Min price ($)<input name="price_min" type="number"></label>
+<label>Max price ($)<input name="price_max" type="number"></label>
+<label>Min odometer (km)<input name="odometer_min" type="number"></label>
+<label>Max odometer (km)<input name="odometer_max" type="number"></label>
+<details style="grid-column:1/-1"><summary>More filters (optional)</summary>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px">
+<label style="grid-column:1/-1">Include words (at least one, comma separated)<input name="include" placeholder="Toyota, Honda, Mazda"></label>
+<label style="grid-column:1/-1">Exclude words (comma separated)<input name="exclude" placeholder="Nissan, hybrid, salvage"></label>
+<label>Make<input name="make" placeholder="Toyota"></label>
+<label>Model<input name="model" placeholder="Corolla"></label>
+<label>Year from<input name="year_min" type="number"></label>
+<label>Year to<input name="year_max" type="number"></label>
+<label>Fuel<select name="fuel_type"><option value="">Any</option><option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option></select></label>
+<label>Transmission<select name="transmission"><option value="">Any</option><option>Automatic</option><option>Manual</option></select></label>
+</div></details>
+<button>Search listings</button>
+</form>
+<div id="status">Set a price and odometer range, then search.</div>
+<div id="grid"></div>
+</main>
+<script>
+const f=document.getElementById('f'),st=document.getElementById('status'),g=document.getElementById('grid');
+f.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const q=new URLSearchParams([...new FormData(f)].filter(([,v])=>v));
+  st.textContent='Searching…';g.innerHTML='';
+  try{
+    const {results,errors,hidden}=await (await fetch('/api/search?'+q)).json();
+    st.textContent=`${results.length} listings`+(hidden?` (${hidden} hidden by your include/exclude words)`:'')+(errors.length?` (problems: ${errors.join('; ')})`:'');
+    g.innerHTML=results.map(r=>`<a class="car" href="${r.url}" target="_blank" rel="noopener">
+      <img src="${r.img||''}" alt="" loading="lazy"><div class="b"><div class="p">${r.price||''}</div>
+      <div>${r.title||''}</div><div class="m">${r.source}${r.region?' · '+r.region:''}</div></div></a>`).join('');
+  }catch(err){st.textContent='Search failed: '+err.message}
+});
+</script>
+</body>
+</html>
